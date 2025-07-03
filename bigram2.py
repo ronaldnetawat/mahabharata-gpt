@@ -6,7 +6,7 @@ from torch.nn import functional as F
 batch_size = 64 # how many independent sequences will we process in parallel?
 block_size = 64 # what is the maximum context length for predictions?
 max_iter = 1000
-eval_interval = 200
+eval_interval = 100
 learning_rate = 3e-4
 # device = 'cuda' if torch.cuda.is_available() else 'cpu'
 eval_iters = 100
@@ -153,13 +153,10 @@ class Block(nn.Module):
 
 class BigramLanguageModel(nn.Module):
 
-    def __init__(self):
+    def __init__(self, vocab_size, block_size, n_embed, n_heads, n_layers, dropout):
         super().__init__()
         self.token_emb_table = nn.Embedding(vocab_size, n_embed)
         self.pos_emb_table = nn.Embedding(block_size, n_embed)
-        # self.sa_head = Head(n_embed)
-        # self.sa_heads = MultiHeadAttention(4, n_embed//4) # multi-headed attention with 4 heads, each divided 32 embed dims into 4 = 32/4 = 8-dim self-attention
-        # self.ffn = FeedForward(n_embed) # the feed-forward mlp
         self.blocks = nn.Sequential(*[Block(n_embed, n_heads=n_heads) for _ in range(n_layers)])
         self.ln_f = nn.LayerNorm(n_embed) # final layer norm
         self.lm_head = nn.Linear(n_embed, vocab_size)
@@ -171,9 +168,6 @@ class BigramLanguageModel(nn.Module):
         token_emb = self.token_emb_table(idx) # B x T x C, C = n_embed
         pos_emb = self.pos_emb_table(torch.arange(T, device=device)) # T x C
         x = token_emb + pos_emb
-        # x = self.sa_head(x) # apply one head of attention
-        # x = self.sa_heads(x) # appply multi-head attention
-        # x = self.ffn(x) # BxTxC
         x = self.blocks(x) # BxTxT, the attention+mlp blocks
         logits = self.lm_head(x) # B x T x vocab_size
 
@@ -206,7 +200,8 @@ class BigramLanguageModel(nn.Module):
             idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
         return idx
     
-model = BigramLanguageModel()
+# Instantiate the model
+model = BigramLanguageModel(vocab_size, block_size, n_embed, n_heads, n_layers, dropout)
 m = model.to(device)
 
 
@@ -230,7 +225,24 @@ for iter in range(max_iter):
     loss.backward()
     optimizer.step()
 
-# infer from the model
-context = torch.zeros((1, 1), dtype=torch.long,device=device)
+print("\nTraining complete.")
 
-print(decode(m.generate(context, max_new_tokens=2000)[0].tolist()))
+# SAVE THE TRAINED MODEL
+model_path = 'model_weights.pth'
+torch.save(m.state_dict(), model_path)
+print(f"Model saved to {model_path}")
+
+# --- NEW SECTION: LOAD MODEL AND GENERATE TEXT ---
+print("\n--- Loading Model and Generating Text ---")
+
+# Instantiate a new model instance
+loaded_model = BigramLanguageModel(vocab_size, block_size, n_embed, n_heads, n_layers, dropout)
+loaded_model.to(device)
+
+# Load the saved state dictionary
+loaded_model.load_state_dict(torch.load(model_path))
+loaded_model.eval() # Set the model to evaluation mode
+
+# Infer from the loaded model
+context = torch.zeros((1, 1), dtype=torch.long, device=device)
+print(decode(loaded_model.generate(context, max_new_tokens=2000)[0].tolist()))
