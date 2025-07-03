@@ -151,7 +151,7 @@ class Block(nn.Module):
         return x
 
 
-class BigramLanguageModel(nn.Module):
+class NGramLanguageModel(nn.Module):
 
     def __init__(self, vocab_size, block_size, n_embed, n_heads, n_layers, dropout):
         super().__init__()
@@ -201,7 +201,7 @@ class BigramLanguageModel(nn.Module):
         return idx
     
 # Instantiate the model
-model = BigramLanguageModel(vocab_size, block_size, n_embed, n_heads, n_layers, dropout)
+model = NGramLanguageModel(vocab_size, block_size, n_embed, n_heads, n_layers, dropout)
 m = model.to(device)
 
 

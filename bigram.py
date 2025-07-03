@@ -151,7 +151,7 @@ class Block(nn.Module):
         return x
 
 
-class BigramLanguageModel(nn.Module):
+class NGramLanguageModel(nn.Module):
 
     def __init__(self):
         super().__init__()
@@ -206,7 +206,7 @@ class BigramLanguageModel(nn.Module):
             idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
         return idx
     
-model = BigramLanguageModel()
+model = NGramLanguageModel()
 m = model.to(device)
 
 
